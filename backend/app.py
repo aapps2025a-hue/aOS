@@ -1,6 +1,6 @@
 """
-aOS Backend Server - Google OAuth 2.0 Integration
-Main entry point for all backend services
+aOS Backend Server - A-Applications Integration
+Main entry point for all backend services with Firebase authentication
 """
 
 import os
@@ -9,13 +9,10 @@ from flask import Flask, render_template, request, jsonify, redirect, session, u
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from google_auth_oauthlib.flow import Flow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-import google.auth.transport.urllib3
+import firebase_admin
+from firebase_admin import credentials, auth as firebase_auth
 from datetime import datetime, timedelta
 import secrets
-import hashlib
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -32,24 +29,37 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
-# Google OAuth configuration
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'YOUR_CLIENT_ID.apps.googleusercontent.com')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'YOUR_CLIENT_SECRET')
-GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+# Firebase configuration - A-Applications
+FIREBASE_CONFIG = {
+    "type": "service_account",
+    "project_id": os.getenv('FIREBASE_PROJECT_ID', 'emojis-symbols-online'),
+    "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
+    "private_key": os.getenv('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n'),
+    "client_email": os.getenv('FIREBASE_CLIENT_EMAIL'),
+    "client_id": os.getenv('FIREBASE_CLIENT_ID'),
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": os.getenv('FIREBASE_CERT_URL')
+}
+
+# Initialize Firebase
+try:
+    cred = credentials.Certificate(FIREBASE_CONFIG)
+    firebase_admin.initialize_app(cred)
+except Exception as e:
+    print(f"Firebase initialization warning: {e}")
 
 # Database Models
 class User(db.Model):
-    """User model for aOS system"""
+    """User model for aOS system - A-Applications Integration"""
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
-    google_id = db.Column(db.String(255), unique=True, nullable=False)
+    firebase_uid = db.Column(db.String(255), unique=True, nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    picture = db.Column(db.String(500))
-    access_token = db.Column(db.Text)
-    refresh_token = db.Column(db.Text)
-    token_expires_at = db.Column(db.DateTime)
+    name = db.Column(db.String(255))
+    profile_picture = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
@@ -61,10 +71,10 @@ class User(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'google_id': self.google_id,
+            'firebase_uid': self.firebase_uid,
             'email': self.email,
             'name': self.name,
-            'picture': self.picture,
+            'profile_picture': self.profile_picture,
             'created_at': self.created_at.isoformat(),
             'is_active': self.is_active
         }
@@ -77,7 +87,7 @@ class Device(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     device_id = db.Column(db.String(255), unique=True, nullable=False)
     device_name = db.Column(db.String(255))
-    device_type = db.Column(db.String(50))  # phone, tablet, desktop, etc.
+    device_type = db.Column(db.String(50))
     os_version = db.Column(db.String(50))
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -130,83 +140,84 @@ class Permission(db.Model):
             'granted': self.granted
         }
 
-# Authentication Routes
-@app.route('/auth/google/login', methods=['GET'])
-def google_login():
-    """Initiate Google OAuth 2.0 login flow"""
-    flow = Flow.from_client_secrets_file(
-        'google_oauth_secret.json',
-        scopes=[
-            'openid',
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile'
-        ],
-        redirect_uri=url_for('google_callback', _external=True)
-    )
+# Authentication Routes - A-Applications Firebase Integration
+@app.route('/auth/aapps/login', methods=['POST'])
+def aapps_login():
+    """Authenticate user with A-Applications Firebase credentials"""
+    data = request.get_json()
+    id_token = data.get('idToken')
     
-    authorization_url, state = flow.authorization_url()
-    session['oauth_state'] = state
-    
-    return jsonify({'authorization_url': authorization_url})
-
-@app.route('/auth/google/callback', methods=['GET'])
-def google_callback():
-    """Handle Google OAuth 2.0 callback"""
-    state = session.get('oauth_state')
-    if not state:
-        return jsonify({'error': 'Missing OAuth state'}), 400
-    
-    flow = Flow.from_client_secrets_file(
-        'google_oauth_secret.json',
-        scopes=[
-            'openid',
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile'
-        ],
-        state=state,
-        redirect_uri=url_for('google_callback', _external=True)
-    )
+    if not id_token:
+        return jsonify({'error': 'Missing ID token'}), 400
     
     try:
-        flow.fetch_token(authorization_response=request.url)
-        credentials = flow.credentials
-        
-        # Get user info
-        user_info = {
-            'id': credentials.id_token.get('sub'),
-            'email': credentials.id_token.get('email'),
-            'name': credentials.id_token.get('name'),
-            'picture': credentials.id_token.get('picture')
-        }
+        # Verify Firebase token
+        decoded_token = firebase_auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+        email = decoded_token.get('email')
+        name = decoded_token.get('name', email.split('@')[0] if email else 'User')
+        picture = decoded_token.get('picture')
         
         # Create or update user
-        user = User.query.filter_by(google_id=user_info['id']).first()
+        user = User.query.filter_by(firebase_uid=uid).first()
         if not user:
             user = User(
-                google_id=user_info['id'],
-                email=user_info['email'],
-                name=user_info['name'],
-                picture=user_info['picture'],
-                access_token=credentials.token,
-                refresh_token=credentials.refresh_token,
-                token_expires_at=credentials.expiry
+                firebase_uid=uid,
+                email=email,
+                name=name,
+                profile_picture=picture
             )
             db.session.add(user)
         else:
-            user.access_token = credentials.token
-            user.refresh_token = credentials.refresh_token
-            user.token_expires_at = credentials.expiry
+            user.name = name
+            user.profile_picture = picture
             user.updated_at = datetime.utcnow()
         
         db.session.commit()
         
-        # Create JWT token
+        # Create JWT token for aOS
         access_token = create_access_token(identity=user.id)
         
         return jsonify({
             'access_token': access_token,
             'user': user.to_dict()
-        })
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 401
+
+@app.route('/auth/aapps/register', methods=['POST'])
+def aapps_register():
+    """Register new user via A-Applications"""
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    name = data.get('name', email.split('@')[0] if email else 'User')
+    
+    if not email or not password:
+        return jsonify({'error': 'Email and password required'}), 400
+    
+    try:
+        # Create Firebase user
+        user_record = firebase_auth.create_user(
+            email=email,
+            password=password,
+            display_name=name
+        )
+        
+        # Create aOS user record
+        user = User(
+            firebase_uid=user_record.uid,
+            email=email,
+            name=name
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'User created successfully',
+            'user': user.to_dict()
+        }), 201
     
     except Exception as e:
         return jsonify({'error': str(e)}), 400
@@ -216,7 +227,6 @@ def google_callback():
 def logout():
     """Logout user"""
     user_id = get_jwt_identity()
-    # Invalidate tokens in real implementation
     return jsonify({'message': 'Logged out successfully'})
 
 @app.route('/auth/refresh', methods=['POST'])
@@ -306,7 +316,6 @@ def install_app():
     user_id = get_jwt_identity()
     data = request.get_json()
     
-    # Check if already installed
     existing = InstalledApp.query.filter_by(
         user_id=user_id,
         package_name=data.get('package_name')
@@ -387,7 +396,8 @@ def get_system_settings():
         'api_level': 30,
         'device_security_patch': '2024-06-01',
         'build_id': 'aOS.1.0.0.release',
-        'build_type': 'release'
+        'build_type': 'release',
+        'auth_provider': 'A-Applications (Firebase)'
     })
 
 @app.route('/system/settings', methods=['PUT'])
@@ -395,7 +405,6 @@ def get_system_settings():
 def update_system_settings():
     """Update system settings"""
     data = request.get_json()
-    # Implementation for settings persistence
     return jsonify({'message': 'Settings updated'})
 
 # Health check
@@ -404,7 +413,8 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat()
+        'timestamp': datetime.utcnow().isoformat(),
+        'auth_provider': 'A-Applications'
     })
 
 # Error handlers
