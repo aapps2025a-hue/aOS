@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>A‑Apps Login</title>
+<link rel="icon" type="image/png" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAdADwDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iub8Ta3PpaWtraxhbq/l8iK6mB+zwN6yN+OFX+Jvl96wvGGqx2EenaVP4hjsrowS3f2q4uVtvNaJNqq33fvSOrbf9hqAPQcUYrjtS8TyRaDp/iOykEtnNGjNZ4/e3Ak27RF6yf3U/izUura1czanY6RZl7Ge/h80XlzHtVFz9xVb703+z/D94/3WOUDrKK57xD/AKZJaaEvP25s3HH/AC7r/rP++vlT/gdc54q8T2Wm+ItkmswWh0uKKZrZrvyvtO9/mXZu+bbGrH6utAHolFctq2s3WianYzcXVhdusAtol3Tqef3kar99e7L/AAqu7/ZrqaAK13awXtrJa3MUc1vKu2SORdystVrLTLOym82CNg5gWAM0jN+7T7o+b/erSooAyLPQdOsjbtDbYa281oSzM3lmRtz7d1Talplrqdo1veQJNE3O3HRudrKf4W5+9WjRQBnxabCuqzaiGkM0sSQ4ZvlVV3H5f++jQumWQF6pgH+nNm43H/WfKE/9BWtCigDOtNJsrORJoIMSRwLbo7MzMI1/h+atGiigD//Z" sizes="32x32">
+
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg,#1e3c72,#2a5298);
+    font-family: "Segoe UI", sans-serif;
+    color: white;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #loginPage {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+  }
+  .card {
+    background:rgba(255,255,255,0.12);
+    backdrop-filter:blur(12px);
+    padding:30px;
+    width:340px;
+    border-radius:16px;
+    box-shadow:0 8px 25px rgba(0,0,0,0.2);
+  }
+  h2 { text-align:center; margin-top:0; }
+  input,button {
+    width:100%;
+    padding:14px;
+    margin:10px 0;
+    border-radius:8px;
+    border:none;
+    outline:none;
+    font-size:15px;
+    box-sizing:border-box;
+  }
+  button {
+    background:#4ea5ff;
+    color:white;
+    cursor:pointer;
+  }
+  .msg { text-align:center; min-height:20px; }
+  .msg.error { color:#ff4e4e; }
+  .msg.success { color:#7CFC7C; }
+  .link { text-align:center; cursor:pointer; color:#a8d4ff; }
+  .form { display:none; }
+  .form.active { display:block; }
+</style>
+</head>
+<body>
+
+<div id="loginPage">
+  <div class="card">
+
+    <div id="loginForm" class="form active">
+      <h2>Login with A-Apps</h2>
+      <input id="loginEmail" placeholder="Email">
+      <input id="loginPassword" type="password" placeholder="Password">
+      <button id="loginBtn">Login</button>
+      <div id="loginMsg" class="msg"></div>
+      <div class="link" id="toSignup">Don’t have an account? Sign up</div>
+    </div>
+
+    <div id="signupForm" class="form">
+      <h2>Create A-Apps Account</h2>
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
+      <button id="signupBtn">Sign Up</button>
+      <div id="signupMsg" class="msg"></div>
+      <div class="link" id="toLogin">Already have an account? Log in</div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+  // Firebase client SDK for A-Applications
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+  // Replace with your Firebase config or use the one you already had
+  const firebaseConfig = {
+    apiKey: "AIzaSyDvqfC7dm1umT6pyftRJt2kF1d91uKF_DM",
+    authDomain: "emojis-symbols-online.firebaseapp.com",
+    projectId: "emojis-symbols-online",
+    storageBucket: "emojis-symbols-online.firebasestorage.app",
+    messagingSenderId: "1040623241425",
+    appId: "1:1040623241425:web:9d5a068e6c54845fec1df0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const API_URL = (window.API_URL) ? window.API_URL : 'http://localhost:5000';
+
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginMsg = document.getElementById('loginMsg');
+  const signupMsg = document.getElementById('signupMsg');
+  const email = document.getElementById('email');
+  const password = document.getElementById('password');
+
+  function cleanError(msg){
+    return msg.replace(/^Firebase:\s*/i,"").replace(/\(auth\/.*\)$/i,"").trim();
+  }
+
+  document.getElementById('toSignup').addEventListener('click',()=>{
+    signupForm.classList.add('active');
+    loginForm.classList.remove('active');
+  });
+  document.getElementById('toLogin').addEventListener('click',()=>{
+    loginForm.classList.add('active');
+    signupForm.classList.remove('active');
+  });
+
+  document.getElementById('signupBtn').addEventListener('click',()=>{
+    signupMsg.textContent = '';
+    createUserWithEmailAndPassword(auth, email.value, password.value)
+      .then((userCredential)=>{
+        signupMsg.textContent = 'Account created!';
+      })
+      .catch(err=> signupMsg.textContent = cleanError(err.message));
+  });
+
+  document.getElementById('loginBtn').addEventListener('click',()=>{
+    loginMsg.textContent = '';
+    signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value)
+      .then(async (userCredential)=>{
+        // Get Firebase ID token and send to backend to exchange for aOS JWT
+        const idToken = await userCredential.user.getIdToken();
+        fetch(`${API_URL}/auth/aapps/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        })
+        .then(r => r.json())
+        .then(res => {
+          if(res.access_token){
+            // Store aOS JWT and redirect
+            localStorage.setItem('aos_token', res.access_token);
+            window.location.href = 'compiler.html';
+          } else {
+            loginMsg.textContent = res.error || 'Login failed';
+          }
+        })
+        .catch(err=> loginMsg.textContent = err.message || 'Network error');
+      })
+      .catch(err=> loginMsg.textContent = cleanError(err.message));
+  });
+
+  // Auto-redirect if already logged in with aOS token
+  (async ()=>{
+    const token = localStorage.getItem('aos_token');
+    if(token) window.location.href = 'compiler.html';
+  })();
+
+</script>
+
+</body>
+</html>
