@@ -222,7 +222,7 @@
     <div class="crash-title">A-OS has crashed</div>
     <div class="crash-sub">
       Please Factory Reset.<br>
-      The test reached 20 open windows and cleared this app's stored website data.
+      The test reached 50 open windows and cleared this app's stored website data.
     </div>
     <button id="reset">Factory Reset</button>
   </div>
@@ -230,31 +230,64 @@
 
 <script>
 (() => {
-  const MAX = 20;
-  const windowsEl = document.getElementById("windows");
-  const countEl = document.getElementById("count");
-  const crashEl = document.getElementById("crash");
-
-  let count = 0;
-  let crashed = false;
-
-  // Store only this app's state. It is intentionally scoped to this website/iframe origin.
+  const MAX = 50;
   const KEY = "aos-seeunstopable-test";
 
-  function saveState() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify({
-        windows: count,
-        crashed
-      }));
-    } catch (_) {}
+  let count = 1;
+  let crashed = false;
+
+  /*
+    Same-origin embed mode:
+    If this file is embedded by a page on the SAME origin, move the test UI
+    into the top-level document. This makes it cover the parent page rather
+    than being visually confined to the iframe.
+
+    Cross-origin iframe access is intentionally left to the browser's security
+    boundary, so it stays inside the iframe in that case.
+  */
+  let rootDoc = document;
+
+  try {
+    if (window.top !== window.self && window.top.location.origin === window.location.origin) {
+      rootDoc = window.top.document;
+
+      const sourceApp = document.getElementById("app");
+      const sourceCrash = document.getElementById("crash");
+
+      if (sourceApp && sourceCrash) {
+        const host = rootDoc.createElement("div");
+        host.id = "aos-seeunstopable-root";
+        host.style.cssText =
+          "position:fixed;inset:0;z-index:2147483647;background:#dfe4ea;" +
+          "overflow:auto;width:100vw;height:100vh;";
+
+        const style = rootDoc.createElement("style");
+        style.textContent = `
+          #aos-seeunstopable-root { font-family:"Segoe UI",Arial,sans-serif; }
+          #aos-seeunstopable-root * { box-sizing:border-box; }
+        `;
+
+        rootDoc.head.appendChild(style);
+        rootDoc.body.appendChild(host);
+        host.appendChild(sourceApp);
+        host.appendChild(sourceCrash);
+
+        // Hide the original iframe's document content after moving its nodes.
+        document.documentElement.style.display = "none";
+      }
+    }
+  } catch (_) {
+    // Cross-origin iframe: browser security prevents top-document access.
   }
+
+  const windowsEl = rootDoc.getElementById("windows");
+  const countEl = rootDoc.getElementById("count");
+  const crashEl = rootDoc.getElementById("crash");
 
   function clearThisSiteData() {
     try { localStorage.clear(); } catch (_) {}
     try { sessionStorage.clear(); } catch (_) {}
 
-    // IndexedDB is also scoped to this website's origin.
     if (window.indexedDB && indexedDB.databases) {
       indexedDB.databases().then(dbs => {
         dbs.forEach(db => {
@@ -265,15 +298,13 @@
       }).catch(() => {});
     }
 
-    // Clear service-worker registrations belonging to this app origin.
-    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+    if (navigator.serviceWorker?.getRegistrations) {
       navigator.serviceWorker.getRegistrations()
         .then(regs => regs.forEach(r => r.unregister()))
         .catch(() => {});
     }
 
-    // Clear Cache Storage for this app origin.
-    if (window.caches && caches.keys) {
+    if (window.caches?.keys) {
       caches.keys()
         .then(keys => Promise.all(keys.map(k => caches.delete(k))))
         .catch(() => {});
@@ -281,7 +312,7 @@
   }
 
   function makeWindow() {
-    const w = document.createElement("div");
+    const w = rootDoc.createElement("div");
     w.className = "window";
     w.innerHTML = `
       <div class="topbar">
@@ -300,8 +331,7 @@
     `;
 
     w.addEventListener("click", () => {
-      if (crashed) return;
-      addSix();
+      if (!crashed) addSix();
     });
 
     return w;
@@ -309,46 +339,58 @@
 
   function render() {
     windowsEl.innerHTML = "";
+
     for (let i = 0; i < count; i++) {
-      windowsEl.appendChild(makeWindow());
+      const w = makeWindow();
+
+      // Spread windows across the page once there are several.
+      const row = Math.floor(i / 3);
+      const col = i % 3;
+      const tilt = ((i * 17) % 9) - 4;
+
+      w.style.marginTop = i === 0 ? "42px" : "18px";
+      w.style.transform =
+        `translateX(${(col - 1) * 8}%) rotate(${tilt * 0.12}deg)`;
+
+      windowsEl.appendChild(w);
     }
+
     countEl.textContent = count;
   }
 
   function addSix() {
     count = Math.min(MAX, count + 6);
     render();
-    saveState();
+
+    try {
+      localStorage.setItem(KEY, JSON.stringify({windows: count, crashed}));
+    } catch (_) {}
 
     if (count >= MAX) {
       crashed = true;
-      saveState();
 
-      // Simulate the crash and clear data owned by this app.
+      // This clears data belonging to this site's origin, not arbitrary
+      // browser/parent-site data.
       clearThisSiteData();
 
       setTimeout(() => {
         crashEl.classList.add("show");
-      }, 250);
+      }, 200);
     }
   }
 
-  document.getElementById("reset").addEventListener("click", () => {
+  rootDoc.getElementById("reset").addEventListener("click", () => {
     clearThisSiteData();
-
     count = 1;
     crashed = false;
     crashEl.classList.remove("show");
     render();
 
-    // Start fresh after the simulated factory reset.
     try {
-      localStorage.setItem(KEY, JSON.stringify({ windows: count, crashed }));
+      localStorage.setItem(KEY, JSON.stringify({windows: 1, crashed: false}));
     } catch (_) {}
   });
 
-  // Start with one window every time the app is loaded.
-  count = 1;
   render();
 })();
 </script>
