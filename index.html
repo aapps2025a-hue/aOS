@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A-OS SeeUnstopable Test</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #dfe4ea;
+    color: #172033;
+  }
+
+  #app {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    position: relative;
+    padding: 14px;
+    background:
+      radial-gradient(circle at 50% -20%, #ffffff 0, #edf1f5 42%, #d8dee6 100%);
+  }
+
+  #counter {
+    position: fixed;
+    z-index: 100000;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,.88);
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 18px rgba(0,0,0,.12);
+    backdrop-filter: blur(10px);
+  }
+
+  #windows {
+    position: relative;
+    width: 100%;
+    min-height: 100%;
+  }
+
+  .window {
+    width: min(700px, calc(100vw - 28px));
+    min-height: 150px;
+    position: relative;
+    margin: 42px auto 18px;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 10px 30px rgba(25,35,50,.18);
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    transition: transform .08s ease;
+  }
+
+  .window:hover { transform: scale(1.005); }
+
+  .topbar {
+    height: 71px;
+    display: flex;
+    align-items: center;
+    padding-left: 17px;
+    background: linear-gradient(100deg, #d7dbe1 0%, #f7f9fb 48%, #fff 100%);
+    border-bottom: 1px solid #e5e8ed;
+  }
+
+  .hello {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: .1px;
+  }
+
+  .controls {
+    margin-left: auto;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 48px;
+    padding-right: 30px;
+    color: #182033;
+  }
+
+  .control {
+    width: 34px;
+    text-align: center;
+    font-size: 29px;
+    line-height: 1;
+    font-weight: 300;
+  }
+
+  .minimize { transform: translateY(-3px); }
+  .maximize {
+    font-size: 27px;
+    font-weight: 400;
+  }
+  .close {
+    font-size: 31px;
+    font-weight: 300;
+  }
+
+  .profile {
+    width: 43px;
+    height: 43px;
+    margin-left: 18px;
+    margin-right: 15px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    box-shadow: 0 2px 9px rgba(0,0,0,.13);
+    position: relative;
+  }
+
+  .profile::before {
+    content: "";
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 25%, #00e887 0 23%, transparent 24%),
+      conic-gradient(#20df76, #2d7dff, #9b22ff, #20df76);
+  }
+
+  .profile::after {
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #18d66b;
+  }
+
+  .content {
+    min-height: 95px;
+    padding: 22px 24px;
+    background: #fff;
+  }
+
+  .see {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+  }
+
+  .hint {
+    margin-top: 7px;
+    color: #667085;
+    font-size: 13px;
+  }
+
+  #crash {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: #000;
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+  }
+
+  #crash.show { display: flex; }
+
+  .crash-inner {
+    width: min(650px, 90vw);
+  }
+
+  .crash-title {
+    font-size: clamp(30px, 5vw, 56px);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  .crash-sub {
+    color: #c7c7c7;
+    font-size: 17px;
+    line-height: 1.5;
+    margin-bottom: 30px;
+  }
+
+  #reset {
+    appearance: none;
+    border: 1px solid #fff;
+    background: #fff;
+    color: #000;
+    padding: 13px 23px;
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #reset:hover { background: #ddd; }
+
+  .badge {
+    position: fixed;
+    bottom: 10px;
+    right: 12px;
+    z-index: 100000;
+    color: #667085;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="counter">Windows: <span id="count">1</span> / 20</div>
+  <div id="windows"></div>
+  <div class="badge">A-OS A-Defender test simulation</div>
+</div>
+
+<div id="crash">
+  <div class="crash-inner">
+    <div class="crash-title">A-OS has crashed</div>
+    <div class="crash-sub">
+      Please Factory Reset.<br>
+      The test reached 20 open windows and cleared this app's stored website data.
+    </div>
+    <button id="reset">Factory Reset</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MAX = 20;
+  const windowsEl = document.getElementById("windows");
+  const countEl = document.getElementById("count");
+  const crashEl = document.getElementById("crash");
+
+  let count = 0;
+  let crashed = false;
+
+  // Store only this app's state. It is intentionally scoped to this website/iframe origin.
+  const KEY = "aos-seeunstopable-test";
+
+  function saveState() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        windows: count,
+        crashed
+      }));
+    } catch (_) {}
+  }
+
+  function clearThisSiteData() {
+    try { localStorage.clear(); } catch (_) {}
+    try { sessionStorage.clear(); } catch (_) {}
+
+    // IndexedDB is also scoped to this website's origin.
+    if (window.indexedDB && indexedDB.databases) {
+      indexedDB.databases().then(dbs => {
+        dbs.forEach(db => {
+          if (db && db.name) {
+            try { indexedDB.deleteDatabase(db.name); } catch (_) {}
+          }
+        });
+      }).catch(() => {});
+    }
+
+    // Clear service-worker registrations belonging to this app origin.
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations()
+        .then(regs => regs.forEach(r => r.unregister()))
+        .catch(() => {});
+    }
+
+    // Clear Cache Storage for this app origin.
+    if (window.caches && caches.keys) {
+      caches.keys()
+        .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+        .catch(() => {});
+    }
+  }
+
+  function makeWindow() {
+    const w = document.createElement("div");
+    w.className = "window";
+    w.innerHTML = `
+      <div class="topbar">
+        <div class="hello">Hello</div>
+        <div class="controls" aria-hidden="true">
+          <div class="control minimize">−</div>
+          <div class="control maximize">□</div>
+          <div class="control close">×</div>
+          <div class="profile"></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="see">SeeUnstopable</div>
+        <div class="hint">Click this window to duplicate it.</div>
+      </div>
+    `;
+
+    w.addEventListener("click", () => {
+      if (crashed) return;
+      addSix();
+    });
+
+    return w;
+  }
+
+  function render() {
+    windowsEl.innerHTML = "";
+    for (let i = 0; i < count; i++) {
+      windowsEl.appendChild(makeWindow());
+    }
+    countEl.textContent = count;
+  }
+
+  function addSix() {
+    count = Math.min(MAX, count + 6);
+    render();
+    saveState();
+
+    if (count >= MAX) {
+      crashed = true;
+      saveState();
+
+      // Simulate the crash and clear data owned by this app.
+      clearThisSiteData();
+
+      setTimeout(() => {
+        crashEl.classList.add("show");
+      }, 250);
+    }
+  }
+
+  document.getElementById("reset").addEventListener("click", () => {
+    clearThisSiteData();
+
+    count = 1;
+    crashed = false;
+    crashEl.classList.remove("show");
+    render();
+
+    // Start fresh after the simulated factory reset.
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ windows: count, crashed }));
+    } catch (_) {}
+  });
+
+  // Start with one window every time the app is loaded.
+  count = 1;
+  render();
+})();
+</script>
+</body>
+</html>
